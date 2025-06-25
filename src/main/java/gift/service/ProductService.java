@@ -11,6 +11,7 @@ public class ProductService {
 
     private final ProductRepository productRepository;
 
+    // 의존성 주입
     public ProductService(ProductRepository productRepository) {
         this.productRepository = productRepository;
     }

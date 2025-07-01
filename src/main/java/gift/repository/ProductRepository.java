@@ -3,24 +3,35 @@ package gift.repository;
 import gift.model.Product;
 import java.util.List;
 import java.util.Optional;
+import javax.sql.DataSource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
+import org.springframework.jdbc.core.namedparam.SqlParameterSource;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Repository;
 
 @Repository
 public class ProductRepository {
 
     private JdbcTemplate jdbcTemplate;
+    private SimpleJdbcInsert jdbcInsert;
 
-    public ProductRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    public ProductRepository(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.jdbcInsert = new SimpleJdbcInsert(dataSource).withTableName("product")
+            .usingGeneratedKeyColumns("id");
     }
 
     // 상품 저장
     public Product save(Product product) {
-        String sql = "INSERT INTO PRODUCT(name, price, imageUrl) VALUES (?, ?, ?)";
-        jdbcTemplate.update(sql, product.getName(), product.getPrice(), product.getImageUrl());
-        return product;
+        SqlParameterSource parameters = new MapSqlParameterSource()
+            .addValue("name", product.getName())
+            .addValue("price", product.getPrice())
+            .addValue("imageUrl", product.getImageUrl());
+        Long newId = jdbcInsert.executeAndReturnKey(parameters).longValue();
+
+        return new Product(newId, product.getName(), product.getPrice(), product.getImageUrl());
     }
 
     // 상품 전체 조회
@@ -46,6 +57,12 @@ public class ProductRepository {
     public void delete(Long id) {
         String sql = "DELETE FROM PRODUCT WHERE id = ?";
         jdbcTemplate.update(sql, id);
+    }
+
+    // DB 초기화
+    public void deleteAll() {
+        String sql = "DELETE FROM PRODUCT";
+        jdbcTemplate.update(sql);
     }
 
     private RowMapper<Product> productRowMapper() {
